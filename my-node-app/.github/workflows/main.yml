@@ -1,0 +1,26 @@
+name: CI/CD Pipeline
+on: [push]
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test # (Add Jest tests later)
+
+      - name: Build Docker image
+        run: |
+          docker build -t my-node-app .
+          docker tag my-node-app us.icr.io/<namespace>/my-node-app:latest
+
+      - name: Push to IBM Cloud Registry
+        env:
+          IBM_API_KEY: ${{ secrets.IBM_API_KEY }}
+        run: |
+          docker login -u iamapikey -p $IBM_API_KEY us.icr.io
+          docker push us.icr.io/<namespace>/my-node-app:latest
