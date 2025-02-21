@@ -1,5 +1,7 @@
 name: CI/CD Pipeline
+
 on: [push]
+
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
@@ -16,11 +18,20 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t my-node-app .
-          docker tag my-node-app us.icr.io/<namespace>/my-node-app:latest
+          docker tag my-node-app:latest <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/my-node-app:latest
 
-      - name: Push to IBM Cloud Registry
+      - name: Push to AWS ECR
         env:
-          IBM_API_KEY: ${{ secrets.IBM_API_KEY }}
+          AWS_REGION: us-east-1
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          docker login -u iamapikey -p $IBM_API_KEY us.icr.io
-          docker push us.icr.io/<namespace>/my-node-app:latest
+          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/my-node-app:latest
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f deployment.yaml
